@@ -8,6 +8,26 @@ pipeline {
             }
         }
         
+          stage('OWASP Dependency Check') {
+            steps {
+              dir("${env.WORKSPACE}/JenkinsDemo1"){
+                
+                dependencyCheck additionalArguments: '--scan ./', odcInstallation: 'DC'
+                   dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
+                
+              }
+            }
+        }
+        
+        stage('Compile') {
+            steps {
+              dir("${env.WORKSPACE}/JenkinsDemo1"){
+                bat 'mvn compile'    
+		            echo "Maven Compile Goal Executed Successfully!";
+              }
+            }
+        }
+        
         stage('Package') {
             steps {
               dir("${env.WORKSPACE}/JenkinsDemo1"){
@@ -47,14 +67,32 @@ pipeline {
             }
         }
 
+
+      stage('Deployment') {
+            steps {
+              dir("${env.WORKSPACE}/JenkinsDemo1"){
+             
+		            echo "Maven Package Goal Executed Successfully!";
+		             deploy adapters: [tomcat9(url: 'http://localhost:9090/', credentialsId: 'Tomcat-cred')],war: '**/*.war',
+                     contextPath: 'jenkinsTest'
+              }
+            }
+        }
         
     }
     post {
         
         success {
-            echo 'This will run only if successful'
+            
+         mail bcc: '', body: '''echo "Build id is - $BUILD_ID"
+         echo "Build URL is - $BUILD_URL"''', cc: 'nikitajawali06@gmail.com',
+         from: '', replyTo: '', subject: '${currentBuild.result}', to: 'nikitajawali99@gmail.com'
+            
+         echo 'This will run only if successful'
+         
         }
         failure {
+            
             echo 'This will run only if failed'
         }
     
